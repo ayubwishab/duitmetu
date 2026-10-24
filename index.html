@@ -157,7 +157,6 @@
         let expenses = JSON.parse(localStorage.getItem('expenses_data')) || [];
         let chartInstance = null;
 
-        // Mendapatkan string tanggal hari ini (YYYY-MM-DD) sesuai timezone lokal
         function getTodayString() {
             const now = new Date();
             const year = now.getFullYear();
@@ -166,26 +165,19 @@
             return `${year}-${month}-${day}`;
         }
 
-        // Inisialisasi awal
         window.addEventListener('DOMContentLoaded', () => {
-            // Set tanggal input otomatis ke Hari Ini secara real-time
             document.getElementById('dateInput').value = getTodayString();
-            
-            // Set footer year otomatis
             document.getElementById('yearContainer').innerText = new Date().getFullYear();
-
             populateFilters();
             renderApp();
         });
 
-        // FUNGSI DINAMIS UNTUK TAHUN & BULAN
         function populateFilters() {
             const monthSelect = document.getElementById('filterMonth');
             const yearSelect = document.getElementById('filterYear');
             const currentMonth = new Date().getMonth();
             const currentYear = new Date().getFullYear();
 
-            // 1. Render Bulan
             monthSelect.innerHTML = '';
             MONTH_NAMES.forEach((m, idx) => {
                 const opt = document.createElement('option');
@@ -195,16 +187,12 @@
                 monthSelect.appendChild(opt);
             });
 
-            // 2. Render Tahun Dinamis (Selalu update mengikuti tahun berjalan + data transaksi)
             yearSelect.innerHTML = '';
             const yearsSet = new Set();
-            
-            // Rentang tahun otomatis dari 2020 sampai 5 tahun ke depan dari tahun saat ini
             for(let y = 2020; y <= currentYear + 5; y++) {
                 yearsSet.add(y);
             }
 
-            // Masukkan juga tahun dari data transaksi jika ada
             expenses.forEach(item => {
                 if(item.date) {
                     const itemYear = new Date(item.date).getFullYear();
@@ -212,7 +200,6 @@
                 }
             });
 
-            // Urutkan tahun dan masukkan ke dropdown
             Array.from(yearsSet).sort((a,b) => a - b).forEach(y => {
                 const opt = document.createElement('option');
                 opt.value = y;
@@ -240,11 +227,8 @@
 
             document.getElementById('descInput').value = '';
             document.getElementById('amountInput').value = '';
-
-            // Kembalikan input tanggal ke Hari Ini setelah simpan
             document.getElementById('dateInput').value = getTodayString();
 
-            // Update filter jika ada tahun baru yang diinput
             populateFilters();
             renderApp();
         }
@@ -262,13 +246,11 @@
 
             const todayStr = getTodayString();
 
-            // 1. Stat Hari Ini
             const todayItems = expenses.filter(x => x.date === todayStr);
             const todayTotal = todayItems.reduce((acc, x) => acc + x.amount, 0);
             document.getElementById('statToday').innerText = formatRp(todayTotal);
             document.getElementById('countToday').innerText = `${todayItems.length} Transaksi Hari Ini`;
 
-            // 2. Stat Bulan Ini (Sesuai Filter)
             const currentItems = expenses.filter(x => {
                 const d = new Date(x.date);
                 return d.getMonth() === selectedMonth && d.getFullYear() === selectedYear;
@@ -276,7 +258,6 @@
             const currentTotal = currentItems.reduce((acc, x) => acc + x.amount, 0);
             document.getElementById('statThisMonth').innerText = formatRp(currentTotal);
 
-            // 3. Stat Bulan Lalu
             let prevMonth = selectedMonth - 1;
             let prevYear = selectedYear;
             if(prevMonth < 0) { prevMonth = 11; prevYear--; }
@@ -289,7 +270,6 @@
             document.getElementById('statLastMonth').innerText = formatRp(prevTotal);
             document.getElementById('nameLastMonth').innerText = `${MONTH_NAMES[prevMonth]} ${prevYear}`;
 
-            // Perbandingan %
             const diffEl = document.getElementById('diffMonth');
             if(prevTotal > 0) {
                 const diff = ((currentTotal - prevTotal) / prevTotal) * 100;
@@ -300,7 +280,6 @@
                 diffEl.innerText = 'Tidak ada pembanding';
             }
 
-            // 4. Render List
             const filteredList = currentItems.filter(x => x.desc.toLowerCase().includes(searchQuery));
             const listContainer = document.getElementById('transactionList');
             listContainer.innerHTML = '';
@@ -337,7 +316,6 @@
             document.getElementById('countFiltered').innerText = `${filteredList.length} Transaksi`;
             document.getElementById('totalFiltered').innerText = formatRp(filteredList.reduce((acc,x) => acc + x.amount, 0));
 
-            // 5. Render Chart
             renderChart(currentItems, selectedMonth, selectedYear);
         }
 
@@ -377,8 +355,10 @@
                 canvas.classList.add('hidden');
                 noData.classList.remove('hidden');
                 if(chartInstance) chartInstance.destroy();
+                return;
+            }
 
-                        canvas.classList.remove('hidden');
+            canvas.classList.remove('hidden');
             noData.classList.add('hidden');
 
             if(chartInstance) chartInstance.destroy();
