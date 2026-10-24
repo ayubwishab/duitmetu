@@ -10,7 +10,7 @@
     <style>
         body { background-color: #0b0f19; color: #f3f4f6; font-family: system-ui, -apple-system, sans-serif; }
         .glass-card { background: rgba(23, 31, 50, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.08); }
-        input, select { background-color: #111827 !important; border-color: rgba(255, 255, 255, 0.15) !important; color: #f3f4f6 !important; }
+        input, select { background-color: #111827 !important; border-color: rgba(255, 255, 255, 0.15) !important; color: #f3f4f6 !important; color-scheme: dark; }
         input:focus, select:focus { border-color: #6366f1 !important; outline: none; }
     </style>
 </head>
@@ -157,24 +157,35 @@
         let expenses = JSON.parse(localStorage.getItem('expenses_data')) || [];
         let chartInstance = null;
 
+        // Mendapatkan string tanggal hari ini (YYYY-MM-DD) sesuai timezone lokal
+        function getTodayString() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         // Inisialisasi awal
         window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('dateInput').valueToDate = new Date();
-            document.getElementById('dateInput').value = new Date().toISOString().split('T')[0];
+            // Set tanggal input otomatis ke Hari Ini secara real-time
+            document.getElementById('dateInput').value = getTodayString();
             
-            // Set footer year
+            // Set footer year otomatis
             document.getElementById('yearContainer').innerText = new Date().getFullYear();
 
             populateFilters();
             renderApp();
         });
 
+        // FUNGSI DINAMIS UNTUK TAHUN & BULAN
         function populateFilters() {
             const monthSelect = document.getElementById('filterMonth');
             const yearSelect = document.getElementById('filterYear');
             const currentMonth = new Date().getMonth();
             const currentYear = new Date().getFullYear();
 
+            // 1. Render Bulan
             monthSelect.innerHTML = '';
             MONTH_NAMES.forEach((m, idx) => {
                 const opt = document.createElement('option');
@@ -184,16 +195,31 @@
                 monthSelect.appendChild(opt);
             });
 
+            // 2. Render Tahun Dinamis (Selalu update mengikuti tahun berjalan + data transaksi)
             yearSelect.innerHTML = '';
-            const startYear = 2024;
-            const endYear = currentYear + 1;
-            for(let y = startYear; y <= endYear; y++) {
+            const yearsSet = new Set();
+            
+            // Rentang tahun otomatis dari 2020 sampai 5 tahun ke depan dari tahun saat ini
+            for(let y = 2020; y <= currentYear + 5; y++) {
+                yearsSet.add(y);
+            }
+
+            // Masukkan juga tahun dari data transaksi jika ada
+            expenses.forEach(item => {
+                if(item.date) {
+                    const itemYear = new Date(item.date).getFullYear();
+                    if(!isNaN(itemYear)) yearsSet.add(itemYear);
+                }
+            });
+
+            // Urutkan tahun dan masukkan ke dropdown
+            Array.from(yearsSet).sort((a,b) => a - b).forEach(y => {
                 const opt = document.createElement('option');
                 opt.value = y;
                 opt.innerText = y;
                 if(y === currentYear) opt.selected = true;
                 yearSelect.appendChild(opt);
-            }
+            });
         }
 
         function formatRp(val) {
@@ -215,6 +241,11 @@
             document.getElementById('descInput').value = '';
             document.getElementById('amountInput').value = '';
 
+            // Kembalikan input tanggal ke Hari Ini setelah simpan
+            document.getElementById('dateInput').value = getTodayString();
+
+            // Update filter jika ada tahun baru yang diinput
+            populateFilters();
             renderApp();
         }
 
@@ -229,7 +260,7 @@
             const selectedYear = parseInt(document.getElementById('filterYear').value);
             const searchQuery = document.getElementById('searchInput').value.toLowerCase();
 
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = getTodayString();
 
             // 1. Stat Hari Ini
             const todayItems = expenses.filter(x => x.date === todayStr);
@@ -258,7 +289,7 @@
             document.getElementById('statLastMonth').innerText = formatRp(prevTotal);
             document.getElementById('nameLastMonth').innerText = `${MONTH_NAMES[prevMonth]} ${prevYear}`;
 
-            // Perbandingan
+            // Perbandingan %
             const diffEl = document.getElementById('diffMonth');
             if(prevTotal > 0) {
                 const diff = ((currentTotal - prevTotal) / prevTotal) * 100;
@@ -346,10 +377,8 @@
                 canvas.classList.add('hidden');
                 noData.classList.remove('hidden');
                 if(chartInstance) chartInstance.destroy();
-                return;
-            }
 
-            canvas.classList.remove('hidden');
+                        canvas.classList.remove('hidden');
             noData.classList.add('hidden');
 
             if(chartInstance) chartInstance.destroy();
@@ -378,16 +407,17 @@
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(expenses));
             const dlAnchorElem = document.createElement('a');
             dlAnchorElem.setAttribute("href", dataStr);
-            dlAnchorElem.setAttribute("download", `rekap_pengeluaran_${new Date().toISOString().split('T')[0]}.json`);
+            dlAnchorElem.setAttribute("download", `rekap_pengeluaran_${getTodayString()}.json`);
             dlAnchorElem.click();
         }
 
-                function importJSON(event) {
+        function importJSON(event) {
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
                     expenses = JSON.parse(e.target.result);
                     localStorage.setItem('expenses_data', JSON.stringify(expenses));
+                    populateFilters();
                     renderApp();
                     alert("Data berhasil diimpor!");
                 } catch(err) { alert("File JSON tidak valid!"); }
@@ -405,7 +435,7 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.setAttribute('href', url);
-            a.setAttribute('download', `pengeluaran_${new Date().toISOString().split('T')[0]}.csv`);
+            a.setAttribute('download', `pengeluaran_${getTodayString()}.csv`);
             a.click();
         }
     </script>
